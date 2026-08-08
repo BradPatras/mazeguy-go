@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"strconv"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -10,21 +9,19 @@ import (
 	"github.com/imacks/bitflags-go"
 )
 
-type wall int
+type wallFlags int
 
 const (
-	top wall = 1 << iota
+	top wallFlags = 1 << iota
 	right
 	bottom
 	left
 )
 
 type cell struct {
-	walls   wall
+	walls   wallFlags
 	visited bool
 }
-
-var nilcell = cell{-1, false}
 
 func main() {
 	p := tea.NewProgram(model{})
@@ -61,12 +58,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) setWindowSize(w int, h int) model {
-	m.height = ensuringOdd(h)
-	m.width = ensuringOdd(w)
-
 	if !m.didSetInitalSize {
+		m.height = ensuringOdd(h)
+		m.width = ensuringOdd(w)
+
 		m.didSetInitalSize = true
-		m.grid = createCellGrid((m.width-1)/2, (m.height-1)/2)
+		m.grid = createCellGrid((m.width-1)/4, (m.height-1)/2)
 	}
 
 	return m
@@ -86,7 +83,7 @@ func (m model) View() tea.View {
 	}
 
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
-	v := tea.NewView(style.Width(m.width).MaxWidth(m.width).Render(m.render()))
+	v := tea.NewView(style.Width(m.width).MaxWidth(m.width).Render(m.render2()))
 	v.AltScreen = true
 	return v
 }
@@ -97,7 +94,7 @@ func createCellGrid(width int, height int) [][]cell {
 		grid[x] = make([]cell, height)
 		for y := range height {
 			grid[x][y] = cell{
-				walls: 15, // all walls, binary 1111
+				walls: 15, // all walls, bitwise flags 1111
 			}
 		}
 	}
@@ -105,48 +102,141 @@ func createCellGrid(width int, height int) [][]cell {
 	return grid
 }
 
-func (m model) render() string {
+// per-cell render
+func (m model) render2() string {
 	var result strings.Builder
-	for y := range m.height {
-		for x := range m.width {
-			cell := m.cellForPixel(x, y)
-			if y == 0 && x == 0 { // top left corner
-				result.WriteRune(rune('╔'))
-			} else if y == 0 && x == m.width-1 { // top right corner
-				result.WriteRune(rune('╗'))
-			} else if y == m.height-1 && x == 0 { // bottom left corner
-				result.WriteRune(rune('╚'))
-			} else if y == m.height-1 && x == m.width-1 { // bottom right corner
-				result.WriteRune(rune('╝'))
-			} else if y == 0 || y == m.height-1 { // top or bottom edge
-				if y == 0 && cell != nilcell && bitflags.Has(cell.walls, left, right) {
-					result.WriteRune(rune('╦'))
-				} else if y == m.height-1 && cell != nilcell && bitflags.Has(cell.walls, left, right) {
-					result.WriteRune(rune('╩'))
-				} else {
-					result.WriteString(strconv.Itoa(int(cell.walls)))
+
+	// cell height is 3 so we will build 3 lines of text at a time
+	var sb1 strings.Builder
+	var sb2 strings.Builder
+	var sb3 strings.Builder
+	gridHeight := len(m.grid[0])
+	gridWidth := len(m.grid)
+
+	for y := range gridHeight {
+		for x := range gridWidth {
+			n, e, s, w := m.getNeighborWalls(x, y)
+			c := m.grid[x][y].walls
+			// top row
+			if y == 0 {
+				if x == 0 {
+					sb1.WriteRune(getWallIntersection(bitflags.Has(n, left), bitflags.Has(c, top), bitflags.Has(c, left), bitflags.Has(w, top)))
 				}
-			} else if x == 0 || x == m.width-1 { // left or right edge
-				// or ╠ or ╣
-				result.WriteRune(rune('║'))
-			} else {
-				result.WriteRune(' ')
+				if bitflags.Has(c, top) {
+					sb1.WriteString("═══")
+				} else {
+					sb1.WriteString("   ")
+				}
+				sb1.WriteRune(getWallIntersection(bitflags.Has(n, right), bitflags.Has(e, top), bitflags.Has(c, right), bitflags.Has(c, top)))
 			}
+
+			// middle row
+			if x == 0 {
+				if bitflags.Has(c, left) {
+					sb2.WriteRune(rune('║'))
+				} else {
+					sb2.WriteRune(rune(' '))
+				}
+			}
+			sb2.WriteString("   ")
+			if bitflags.Has(c, right) {
+				sb2.WriteRune(rune('║'))
+			} else {
+				sb2.WriteRune(rune(' '))
+			}
+
+			// bottom row
+			if x == 0 {
+				sb3.WriteRune(getWallIntersection(bitflags.Has(c, left), bitflags.Has(c, bottom), bitflags.Has(s, left), bitflags.Has(w, bottom)))
+			}
+			if bitflags.Has(c, bottom) {
+				sb3.WriteString("═══")
+			} else {
+				sb3.WriteString("   ")
+			}
+			sb3.WriteRune(getWallIntersection(bitflags.Has(c, right), bitflags.Has(e, bottom), bitflags.Has(s, right), bitflags.Has(c, bottom)))
 		}
-		result.WriteRune('\n')
+
+		if sb1.Len() > 0 {
+			sb1.WriteRune('\n')
+			result.WriteString(sb1.String())
+			sb1.Reset()
+		}
+
+		sb2.WriteRune('\n')
+		result.WriteString(sb2.String())
+		sb2.Reset()
+
+		sb3.WriteRune('\n')
+		result.WriteString(sb3.String())
+		sb3.Reset()
 	}
+
 	return result.String()
 }
 
-func (m model) cellForPixel(x int, y int) cell {
-	// cells always fall on odd-number coordinates
-	if x%2 == 0 || y%2 == 0 {
-		return nilcell
+// get the wall intersection rune based on the presence of neighboring walls
+func getWallIntersection(n bool, e bool, s bool, w bool) rune {
+	if !n && !e && !s && !w {
+		return rune(' ')
+	} else if !n && !e && s && w {
+		return rune('╗')
+	} else if !n && e && s && !w {
+		return rune('╔')
+	} else if !n && e && s && w {
+		return rune('╦')
+	} else if n && !e && !s && w {
+		return rune('╝')
+	} else if n && !e && s && w {
+		return rune('╣')
+	} else if n && e && !s && !w {
+		return rune('╚')
+	} else if n && e && !s && w {
+		return rune('╩')
+	} else if n && e && s && !w {
+		return rune('╠')
+	} else if n && e && s && w {
+		return rune('╬')
+	} else if n || s {
+		return rune('║')
+	} else if e || w {
+		return rune('═')
 	}
 
-	bottomleft := 
+	return rune('?')
+}
 
-	return m.grid[x/2][y/2]
+// return the wallsets of the neighboring cells
+func (m model) getNeighborWalls(cellX int, cellY int) (n wallFlags, e wallFlags, s wallFlags, w wallFlags) {
+	// north neighbor
+	if cellY == 0 { // top row
+		n = bitflags.Set(n, bottom)
+	} else {
+		n = m.grid[cellX][cellY-1].walls
+	}
+
+	// south neighbor
+	if cellY == len(m.grid[0])-1 { // bottom row
+		s = bitflags.Set(s, top)
+	} else {
+		s = m.grid[cellX][cellY+1].walls
+	}
+
+	// east neighbor
+	if cellX == len(m.grid)-1 { // right edge
+		e = bitflags.Set(e, left)
+	} else {
+		e = m.grid[cellX+1][cellY].walls
+	}
+
+	// west neighbor
+	if cellX == 0 { // left edge
+		w = bitflags.Set(w, right)
+	} else {
+		w = m.grid[cellX-1][cellY].walls
+	}
+
+	return n, e, s, w
 }
 
 // Maze generates incrementally, shows status message, "Generating maze..."
