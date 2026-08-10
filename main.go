@@ -18,13 +18,17 @@ const (
 	left
 )
 
+type vec2 struct {
+	x, y int
+}
+
 type cell struct {
 	walls   wallFlags
 	visited bool
 }
 
 func main() {
-	p := tea.NewProgram(model{})
+	p := tea.NewProgram(&model{})
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
@@ -37,11 +41,11 @@ type model struct {
 	grid             [][]cell
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -51,22 +55,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:
-		m = m.setWindowSize(msg.Width, msg.Height)
+		m.setWindowSize(msg.Width, msg.Height)
 	}
 
 	return m, cmd
 }
 
-func (m model) setWindowSize(w int, h int) model {
+func (m *model) setWindowSize(w int, h int) {
 	if !m.didSetInitalSize {
 		m.height = ensuringOdd(h)
 		m.width = ensuringOdd(w)
 
 		m.didSetInitalSize = true
-		m.grid = createCellGrid((m.width-1)/4, (m.height-1)/2)
+		m.grid = generateMaze(((m.width)/4)-1, ((m.height)/2)-1)
 	}
-
-	return m
 }
 
 func ensuringOdd(v int) int {
@@ -77,13 +79,13 @@ func ensuringOdd(v int) int {
 	}
 }
 
-func (m model) View() tea.View {
+func (m *model) View() tea.View {
 	if m.width == 0 || m.height == 0 {
 		return tea.NewView("Loading...")
 	}
 
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
-	v := tea.NewView(style.Width(m.width).MaxWidth(m.width).Render(m.render2()))
+	v := tea.NewView(style.Width(m.width).MaxWidth(m.width).Render(m.render()))
 	v.AltScreen = true
 	return v
 }
@@ -102,8 +104,41 @@ func createCellGrid(width int, height int) [][]cell {
 	return grid
 }
 
+// generate a maze using a depth-first-search that visits all
+// cells
+func generateMaze(gridWidth int, gridHeight int) [][]cell {
+	if gridHeight < 1 || gridWidth < 1 {
+		panic("invalid maze dimensions")
+	}
+
+	grid := createCellGrid(gridWidth, gridHeight)
+
+	// entry point is top left
+	initial := &grid[0][0]
+	initial.walls = bitflags.Del(initial.walls, left)
+
+	var backstack []vec2
+	backstack = append(backstack, vec2{0, 0})
+
+	// while backstack is not empty
+	for len(backstack) > 0 {
+		// pick a random un-visited neighbor of the last backstack element
+		
+		// break down the wall between the backstack element and the neighbor
+
+		// mark neighbor as visited and append it to the backstack
+
+		// if last backstack element has no un-visited neighbors, walk backwards
+		// through the backstack, removing cells until a cell with un-visited neighbors
+		// is found.
+
+	}
+
+	return grid
+}
+
 // per-cell render
-func (m model) render2() string {
+func (m *model) render() string {
 	var result strings.Builder
 
 	// cell height is 3 so we will build 3 lines of text at a time
@@ -207,7 +242,7 @@ func getWallIntersection(n bool, e bool, s bool, w bool) rune {
 }
 
 // return the wallsets of the neighboring cells
-func (m model) getNeighborWalls(cellX int, cellY int) (n wallFlags, e wallFlags, s wallFlags, w wallFlags) {
+func (m *model) getNeighborWalls(cellX int, cellY int) (n wallFlags, e wallFlags, s wallFlags, w wallFlags) {
 	// north neighbor
 	if cellY == 0 { // top row
 		n = bitflags.Set(n, bottom)
