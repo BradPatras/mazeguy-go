@@ -26,6 +26,8 @@ type cell struct {
 	visited bool
 }
 
+type tickMsg struct{}
+
 func main() {
 	p := tea.NewProgram(&model{})
 	if _, err := p.Run(); err != nil {
@@ -38,6 +40,7 @@ type model struct {
 	width            int
 	height           int
 	grid             [][]cell
+	gmodel           *genmodel
 }
 
 func (m *model) Init() tea.Cmd {
@@ -53,10 +56,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
 		case "enter":
-			m.grid = generateMaze(((m.width)/4)-1, ((m.height)/2)-1)
+			m.grid = m.gmodel.generateMaze(10)
 		}
 	case tea.WindowSizeMsg:
 		m.setWindowSize(msg.Width, msg.Height)
+	case tickMsg:
+
 	}
 
 	return m, cmd
@@ -68,7 +73,8 @@ func (m *model) setWindowSize(w int, h int) {
 		m.width = ensuringOdd(w)
 
 		m.didSetInitalSize = true
-		m.grid = generateMaze(((m.width)/4)-1, ((m.height)/2)-1)
+		m.gmodel = initializeMaze(((m.width)/4)-1, ((m.height)/2)-1)
+		m.grid = m.gmodel.generateMaze(1)
 	}
 }
 

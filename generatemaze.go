@@ -1,11 +1,21 @@
 package main
 
 import (
+	"math"
 	"math/rand/v2"
 	"slices"
 
 	"github.com/imacks/bitflags-go"
 )
+
+type genmodel struct {
+	current    *cell
+	backstack  []vec2
+	grid       [][]cell
+	gridWidth  int
+	gridHeight int
+	isFinished bool
+}
 
 func createCellGrid(width int, height int) [][]cell {
 	grid := make([][]cell, width)
@@ -22,9 +32,7 @@ func createCellGrid(width int, height int) [][]cell {
 	return grid
 }
 
-// generate a maze using a depth-first-search that visits all
-// cells
-func generateMaze(gridWidth int, gridHeight int) [][]cell {
+func initializeMaze(gridWidth int, gridHeight int) *genmodel {
 	if gridHeight < 1 || gridWidth < 1 {
 		panic("invalid maze dimensions")
 	}
@@ -38,69 +46,90 @@ func generateMaze(gridWidth int, gridHeight int) [][]cell {
 	var backstack []vec2
 	backstack = append(backstack, current.pos)
 
-	// while backstack is not empty
-	for len(backstack) > 0 {
-		// pick a random un-visited neighbor of the last backstack element
+	return &genmodel{
+		current:   current,
+		backstack: backstack,
+		grid:      grid,
+		gridWidth: gridWidth,
+		gridHeight: gridHeight,
+	}
+}
+
+// generate maze using DFS with backtracking to visit every
+// cell in a grid.
+// param `iterations`: how many loops of the algorithm to run before returning. 0 value will render the whole maze before returning.
+func (m *genmodel) generateMaze(iterations int) [][]cell {
+	// iterations allow the maze to be generated bit-by-bit which
+	// allows rendering the maze as it's being built
+	if iterations == 0 {
+		iterations = math.MaxInt
+	}
+
+	for range iterations {
+		// pick a random un-visited neighbor of the last m.backstack element
 		// collect unvisited neighbors
-		leftPos := vec2{current.pos.x - 1, current.pos.y}
-		rightPos := vec2{current.pos.x + 1, current.pos.y}
-		topPos := vec2{current.pos.x, current.pos.y - 1}
-		bottomPos := vec2{current.pos.x, current.pos.y + 1}
+		leftPos := vec2{m.current.pos.x - 1, m.current.pos.y}
+		rightPos := vec2{m.current.pos.x + 1, m.current.pos.y}
+		topPos := vec2{m.current.pos.x, m.current.pos.y - 1}
+		bottomPos := vec2{m.current.pos.x, m.current.pos.y + 1}
 		var neighbors []vec2
 
-		if leftPos.isInBounds(gridWidth, gridHeight) && !grid[leftPos.x][leftPos.y].visited {
+		if leftPos.isInBounds(m.gridWidth, m.gridHeight) && !m.grid[leftPos.x][leftPos.y].visited {
 			neighbors = append(neighbors, leftPos)
 		}
-		if rightPos.isInBounds(gridWidth, gridHeight) && !grid[rightPos.x][rightPos.y].visited {
+		if rightPos.isInBounds(m.gridWidth, m.gridHeight) && !m.grid[rightPos.x][rightPos.y].visited {
 			neighbors = append(neighbors, rightPos)
 		}
-		if topPos.isInBounds(gridWidth, gridHeight) && !grid[topPos.x][topPos.y].visited {
+		if topPos.isInBounds(m.gridWidth, m.gridHeight) && !m.grid[topPos.x][topPos.y].visited {
 			neighbors = append(neighbors, topPos)
 		}
-		if bottomPos.isInBounds(gridWidth, gridHeight) && !grid[bottomPos.x][bottomPos.y].visited {
+		if bottomPos.isInBounds(m.gridWidth, m.gridHeight) && !m.grid[bottomPos.x][bottomPos.y].visited {
 			neighbors = append(neighbors, bottomPos)
 		}
 
 		if len(neighbors) == 0 {
 			// no valid neighbors, move backwards
-			lastIndex := len(backstack) - 1
-			backstack = slices.Delete(backstack, lastIndex, lastIndex+1)
-			if len(backstack) < 1 {
-				// backstack is empty, no more cells to visit
+			lastIndex := len(m.backstack) - 1
+			m.backstack = slices.Delete(m.backstack, lastIndex, lastIndex+1)
+			if len(m.backstack) < 1 {
+				// m.backstack is empty, no more cells to visit
 				break
 			}
-			previousPos := backstack[lastIndex-1]
-			current = &grid[previousPos.x][previousPos.y]
+			previousPos := m.backstack[lastIndex-1]
+			m.current = &m.grid[previousPos.x][previousPos.y]
 			continue
 		}
 
-		// break down the wall between the backstack element and the neighbor
+		// break down the wall between the m.backstack element and the neighbor
 		pickedNeighborPos := neighbors[rand.IntN(len(neighbors))]
-		pickedNeighbor := &grid[pickedNeighborPos.x][pickedNeighborPos.y]
-		if pickedNeighborPos.x < current.pos.x {
-			current.walls = bitflags.Del(current.walls, left)
+		pickedNeighbor := &m.grid[pickedNeighborPos.x][pickedNeighborPos.y]
+		if pickedNeighborPos.x < m.current.pos.x {
+			m.current.walls = bitflags.Del(m.current.walls, left)
 			pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, right)
-		} else if pickedNeighborPos.x > current.pos.x {
-			current.walls = bitflags.Del(current.walls, right)
+		} else if pickedNeighborPos.x > m.current.pos.x {
+			m.current.walls = bitflags.Del(m.current.walls, right)
 			pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, left)
-		} else if pickedNeighborPos.y < current.pos.y {
-			current.walls = bitflags.Del(current.walls, top)
+		} else if pickedNeighborPos.y < m.current.pos.y {
+			m.current.walls = bitflags.Del(m.current.walls, top)
 			pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, bottom)
-		} else if pickedNeighborPos.y > current.pos.y {
-			current.walls = bitflags.Del(current.walls, bottom)
+		} else if pickedNeighborPos.y > m.current.pos.y {
+			m.current.walls = bitflags.Del(m.current.walls, bottom)
 			pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, top)
 		}
 
-		// mark neighbor as visited and append it to the backstack
+		// mark neighbor as visited and append it to the m.backstack
 		pickedNeighbor.visited = true
-		backstack = append(backstack, pickedNeighborPos)
-		current = pickedNeighbor
+		m.backstack = append(m.backstack, pickedNeighborPos)
+		m.current = pickedNeighbor
+
+		if len(m.backstack) == 0 {
+			// create exit point in bottom right
+			m.grid[m.gridWidth-1][m.gridHeight-1].walls = bitflags.Del(m.grid[m.gridWidth-1][m.gridHeight-1].walls, right)
+			break
+		}
 	}
 
-	// create exit point in bottom right
-	grid[gridWidth-1][gridHeight-1].walls = bitflags.Del(grid[gridWidth-1][gridHeight-1].walls, right)
-
-	return grid
+	return m.grid
 }
 
 func (v vec2) isInBounds(width int, height int) bool {
