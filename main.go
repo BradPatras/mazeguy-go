@@ -56,7 +56,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
 		case "enter":
-			m.grid = m.gmodel.generateMaze(10)
+			if !m.gmodel.isFinished {
+				m.grid = m.gmodel.generateMaze(20)
+			}
 		}
 	case tea.WindowSizeMsg:
 		m.setWindowSize(msg.Width, msg.Height)

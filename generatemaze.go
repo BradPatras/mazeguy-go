@@ -47,10 +47,10 @@ func initializeMaze(gridWidth int, gridHeight int) *genmodel {
 	backstack = append(backstack, current.pos)
 
 	return &genmodel{
-		current:   current,
-		backstack: backstack,
-		grid:      grid,
-		gridWidth: gridWidth,
+		current:    current,
+		backstack:  backstack,
+		grid:       grid,
+		gridWidth:  gridWidth,
 		gridHeight: gridHeight,
 	}
 }
@@ -89,12 +89,13 @@ func (m *genmodel) generateMaze(iterations int) [][]cell {
 
 		if len(neighbors) == 0 {
 			// no valid neighbors, move backwards
-			lastIndex := len(m.backstack) - 1
-			m.backstack = slices.Delete(m.backstack, lastIndex, lastIndex+1)
-			if len(m.backstack) < 1 {
-				// m.backstack is empty, no more cells to visit
+			if len(m.backstack) == 1 {
+				// current is final backstack entry, no more cells to visit
 				break
 			}
+			lastIndex := len(m.backstack) - 1
+			m.backstack = slices.Delete(m.backstack, lastIndex, lastIndex+1)
+			
 			previousPos := m.backstack[lastIndex-1]
 			m.current = &m.grid[previousPos.x][previousPos.y]
 			continue
@@ -122,8 +123,10 @@ func (m *genmodel) generateMaze(iterations int) [][]cell {
 		m.backstack = append(m.backstack, pickedNeighborPos)
 		m.current = pickedNeighbor
 
+		// check if finished
 		if len(m.backstack) == 0 {
 			// create exit point in bottom right
+			m.isFinished = true
 			m.grid[m.gridWidth-1][m.gridHeight-1].walls = bitflags.Del(m.grid[m.gridWidth-1][m.gridHeight-1].walls, right)
 			break
 		}
