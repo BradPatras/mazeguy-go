@@ -24,7 +24,6 @@ type cell struct {
 	pos       vec2
 	walls     wallFlags
 	visited   bool
-	isCurrent bool
 }
 
 type tickMsg struct{}

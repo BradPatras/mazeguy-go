@@ -43,7 +43,6 @@ func initializeMaze(gridWidth int, gridHeight int) *genmodel {
 	current := &grid[0][0]
 	current.walls = bitflags.Del(current.walls, left)
 	current.visited = true
-	current.isCurrent = true
 	var backstack []vec2
 	backstack = append(backstack, current.pos)
 
@@ -93,10 +92,8 @@ func (m *genmodel) generateMaze(iterations int) [][]cell {
 			lastIndex := len(m.backstack) - 1
 			m.backstack = slices.Delete(m.backstack, lastIndex, lastIndex+1)
 			if len(m.backstack) > 1 {
-				m.current.isCurrent = false
 				previousPos := m.backstack[lastIndex-1]
 				m.current = &m.grid[previousPos.x][previousPos.y]
-				m.current.isCurrent = true
 			}
 		} else {
 			// break down the wall between the m.backstack element and the neighbor
@@ -118,9 +115,7 @@ func (m *genmodel) generateMaze(iterations int) [][]cell {
 
 			// mark neighbor as visited and append it to the m.backstack
 			pickedNeighbor.visited = true
-			m.current.isCurrent = false
 			m.backstack = append(m.backstack, pickedNeighborPos)
-			pickedNeighbor.isCurrent = true
 			m.current = pickedNeighbor
 		}
 

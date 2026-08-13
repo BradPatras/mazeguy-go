@@ -42,12 +42,7 @@ func render(grid [][]cell) string {
 					sb2.WriteRune(rune(' '))
 				}
 			}
-			if grid[x][y].isCurrent {
-				sb2.WriteString(" ↁ ")
-			} else {
-				sb2.WriteString("   ")
-			}
-
+			sb2.WriteString("   ")
 			if bitflags.Has(c, right) {
 				sb2.WriteRune(rune('║'))
 			} else {
