@@ -21,9 +21,10 @@ type vec2 struct {
 }
 
 type cell struct {
-	pos     vec2
-	walls   wallFlags
-	visited bool
+	pos       vec2
+	walls     wallFlags
+	visited   bool
+	isCurrent bool
 }
 
 type tickMsg struct{}
@@ -57,7 +58,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "enter":
 			if !m.gmodel.isFinished {
-				m.grid = m.gmodel.generateMaze(20)
+				m.grid = m.gmodel.generateMaze(0)
 			}
 		}
 	case tea.WindowSizeMsg:

@@ -43,6 +43,7 @@ func initializeMaze(gridWidth int, gridHeight int) *genmodel {
 	current := &grid[0][0]
 	current.walls = bitflags.Del(current.walls, left)
 	current.visited = true
+	current.isCurrent = true
 	var backstack []vec2
 	backstack = append(backstack, current.pos)
 
@@ -89,42 +90,42 @@ func (m *genmodel) generateMaze(iterations int) [][]cell {
 
 		if len(neighbors) == 0 {
 			// no valid neighbors, move backwards
-			if len(m.backstack) == 1 {
-				// current is final backstack entry, no more cells to visit
-				break
-			}
 			lastIndex := len(m.backstack) - 1
 			m.backstack = slices.Delete(m.backstack, lastIndex, lastIndex+1)
-			
-			previousPos := m.backstack[lastIndex-1]
-			m.current = &m.grid[previousPos.x][previousPos.y]
-			continue
-		}
+			if len(m.backstack) > 1 {
+				m.current.isCurrent = false
+				previousPos := m.backstack[lastIndex-1]
+				m.current = &m.grid[previousPos.x][previousPos.y]
+				m.current.isCurrent = true
+			}
+		} else {
+			// break down the wall between the m.backstack element and the neighbor
+			pickedNeighborPos := neighbors[rand.IntN(len(neighbors))]
+			pickedNeighbor := &m.grid[pickedNeighborPos.x][pickedNeighborPos.y]
+			if pickedNeighborPos.x < m.current.pos.x {
+				m.current.walls = bitflags.Del(m.current.walls, left)
+				pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, right)
+			} else if pickedNeighborPos.x > m.current.pos.x {
+				m.current.walls = bitflags.Del(m.current.walls, right)
+				pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, left)
+			} else if pickedNeighborPos.y < m.current.pos.y {
+				m.current.walls = bitflags.Del(m.current.walls, top)
+				pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, bottom)
+			} else if pickedNeighborPos.y > m.current.pos.y {
+				m.current.walls = bitflags.Del(m.current.walls, bottom)
+				pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, top)
+			}
 
-		// break down the wall between the m.backstack element and the neighbor
-		pickedNeighborPos := neighbors[rand.IntN(len(neighbors))]
-		pickedNeighbor := &m.grid[pickedNeighborPos.x][pickedNeighborPos.y]
-		if pickedNeighborPos.x < m.current.pos.x {
-			m.current.walls = bitflags.Del(m.current.walls, left)
-			pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, right)
-		} else if pickedNeighborPos.x > m.current.pos.x {
-			m.current.walls = bitflags.Del(m.current.walls, right)
-			pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, left)
-		} else if pickedNeighborPos.y < m.current.pos.y {
-			m.current.walls = bitflags.Del(m.current.walls, top)
-			pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, bottom)
-		} else if pickedNeighborPos.y > m.current.pos.y {
-			m.current.walls = bitflags.Del(m.current.walls, bottom)
-			pickedNeighbor.walls = bitflags.Del(pickedNeighbor.walls, top)
+			// mark neighbor as visited and append it to the m.backstack
+			pickedNeighbor.visited = true
+			m.current.isCurrent = false
+			m.backstack = append(m.backstack, pickedNeighborPos)
+			pickedNeighbor.isCurrent = true
+			m.current = pickedNeighbor
 		}
-
-		// mark neighbor as visited and append it to the m.backstack
-		pickedNeighbor.visited = true
-		m.backstack = append(m.backstack, pickedNeighborPos)
-		m.current = pickedNeighbor
 
 		// check if finished
-		if len(m.backstack) == 0 {
+		if len(m.backstack) <= 1 {
 			// create exit point in bottom right
 			m.isFinished = true
 			m.grid[m.gridWidth-1][m.gridHeight-1].walls = bitflags.Del(m.grid[m.gridWidth-1][m.gridHeight-1].walls, right)
