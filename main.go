@@ -38,8 +38,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "enter":
 			if !m.gmodel.isFinished {
-				m.grid = m.gmodel.generateMaze(0)
+				m.grid = m.gmodel.generateMaze(m.width * m.height / 250)
 			}
+		case "r":
+			m.gmodel = initializeMaze(((m.width)/4)-1, ((m.height)/2)-1)
+			m.grid = m.gmodel.generateMaze(0)
 		}
 	case tea.WindowSizeMsg:
 		m.setWindowSize(msg.Width, msg.Height)
