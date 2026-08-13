@@ -2,26 +2,30 @@ package main
 
 import (
 	"log"
+	"strconv"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
 
-type tickMsg struct{}
+type tickMsg time.Time
 
 func main() {
-	p := tea.NewProgram(&model{})
+	p := tea.NewProgram(&model{iterationsPerFrame: 1})
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
 }
 
 type model struct {
-	didSetInitalSize bool
-	width            int
-	height           int
-	grid             [][]cell
-	gmodel           *genmodel
+	didSetInitalSize   bool
+	width              int
+	height             int
+	grid               [][]cell
+	gmodel             *genmodel
+	isPaused           bool
+	iterationsPerFrame int
 }
 
 func (m *model) Init() tea.Cmd {
@@ -37,17 +41,51 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
 		case "enter":
-			if !m.gmodel.isFinished {
-				m.grid = m.gmodel.generateMaze(m.width * m.height / 250)
+			m.gmodel = initializeMaze(((m.width)/4)-1, ((ensuringOdd(m.height-1))/2)-1)
+			m.grid = m.gmodel.generateMaze(m.iterationsPerFrame)
+			cmd = tea.Batch(
+				cmd,
+				tickCmd(),
+			)
+		case "space":
+			if len(m.grid) > 0 {
+				m.isPaused = !m.isPaused
+				if !m.isPaused {
+					cmd = tea.Batch(
+						cmd,
+						tickCmd(),
+					)
+				}
 			}
-		case "r":
-			m.gmodel = initializeMaze(((m.width)/4)-1, ((m.height)/2)-1)
-			m.grid = m.gmodel.generateMaze(0)
+		case "left":
+			switch m.iterationsPerFrame {
+			case 0, 1:
+				m.iterationsPerFrame = 0
+			case 5:
+				m.iterationsPerFrame = 1
+			default:
+				m.iterationsPerFrame -= 5
+			}
+		case "right":
+			switch m.iterationsPerFrame {
+			case 0:
+				m.iterationsPerFrame = 1
+			case 1:
+				m.iterationsPerFrame = 5
+			default:
+				m.iterationsPerFrame += 5
+			}
 		}
 	case tea.WindowSizeMsg:
 		m.setWindowSize(msg.Width, msg.Height)
 	case tickMsg:
-
+		if !m.isPaused && !m.gmodel.isFinished {
+			m.grid = m.gmodel.generateMaze(m.iterationsPerFrame)
+			cmd = tea.Batch(
+				cmd,
+				tickCmd(),
+			)
+		}
 	}
 
 	return m, cmd
@@ -55,12 +93,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) setWindowSize(w int, h int) {
 	if !m.didSetInitalSize {
-		m.height = ensuringOdd(h)
+		m.height = h
 		m.width = ensuringOdd(w)
 
 		m.didSetInitalSize = true
-		m.gmodel = initializeMaze(((m.width)/4)-1, ((m.height)/2)-1)
-		m.grid = m.gmodel.generateMaze(1)
 	}
 }
 
@@ -77,8 +113,60 @@ func (m *model) View() tea.View {
 		return tea.NewView("Loading...")
 	}
 
-	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
-	v := tea.NewView(style.Width(m.width).MaxWidth(m.width).Render(render(m.grid)))
+	cv := m.controlView()
+
+	_, cvHeight := lipgloss.Size(cv)
+
+	var content string
+	if len(m.grid) == 0 {
+		content = lipgloss.NewStyle().Height(m.height - cvHeight).AlignVertical(lipgloss.Center).Render("Press enter to begin")
+	} else {
+		content = m.mazeView(m.height - cvHeight)
+	}
+
+	viewString := lipgloss.JoinVertical(
+		lipgloss.Center,
+		content,
+		m.controlView(),
+	)
+
+	v := tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, viewString))
 	v.AltScreen = true
+	return v
+}
+
+func tickCmd() tea.Cmd {
+	return tea.Tick(time.Nanosecond*1, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
+}
+
+func (m model) mazeView(height int) string {
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
+	return style.Width(m.width).Height(height).MaxHeight(height).Render(render(m.grid))
+}
+
+func (m model) controlView() string {
+	cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
+	typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#1ab753"))
+	style := lipgloss.NewStyle().Faint(true)
+	str := style.Render("Iterations per frame: ") +
+		typeStyle.Render(strconv.Itoa(m.iterationsPerFrame)) +
+		style.Render(" | ") +
+		cmdStyle.Render("[left/right] arrow") +
+		style.Render(" adjusts iterations per frame | ") +
+		cmdStyle.Render("[enter]") +
+		style.Render(" regenerates | ") +
+		cmdStyle.Render("[space]") +
+		style.Render(" play/pause")
+	v := lipgloss.NewStyle().
+		PaddingLeft(1).
+		PaddingRight(1).
+		Width(m.width).
+		BorderTop(true).
+		Border(lipgloss.ThickBorder(), true, false, false, false).
+		BorderForeground(lipgloss.Color("#666699")).
+		Render(str)
+
 	return v
 }
