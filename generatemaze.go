@@ -78,7 +78,7 @@ func initializeMaze(gridWidth int, gridHeight int) *genmodel {
 // cell in a grid.
 // param `iterations`: how many loops of the algorithm to run before returning. 0 value will render the whole maze before returning.
 func (m *genmodel) generateMaze(iterations int) [][]cell {
-	// iterations allow the maze to be generated bit-by-bit which
+	// iterations force the maze to be generated bit-by-bit which
 	// allows rendering the maze as it's being built
 	if iterations == 0 {
 		iterations = math.MaxInt
@@ -107,9 +107,11 @@ func (m *genmodel) generateMaze(iterations int) [][]cell {
 		}
 
 		if len(neighbors) == 0 {
-			// no valid neighbors, move backwards
+			// no valid neighbors remove last backstack element
 			lastIndex := len(m.backstack) - 1
 			m.backstack = slices.Delete(m.backstack, lastIndex, lastIndex+1)
+
+			// if possible, move backwards in backstack
 			if len(m.backstack) > 1 {
 				previousPos := m.backstack[lastIndex-1]
 				m.current = &m.grid[previousPos.x][previousPos.y]
@@ -140,8 +142,8 @@ func (m *genmodel) generateMaze(iterations int) [][]cell {
 
 		// check if finished
 		if len(m.backstack) <= 1 {
-			// create exit point in bottom right
 			m.isFinished = true
+			// create exit point in bottom right
 			m.grid[m.gridWidth-1][m.gridHeight-1].walls = bitflags.Del(m.grid[m.gridWidth-1][m.gridHeight-1].walls, right)
 			break
 		}
