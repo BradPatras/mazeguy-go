@@ -7,25 +7,6 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-type wallFlags int
-
-const (
-	top wallFlags = 1 << iota
-	right
-	bottom
-	left
-)
-
-type vec2 struct {
-	x, y int
-}
-
-type cell struct {
-	pos       vec2
-	walls     wallFlags
-	visited   bool
-}
-
 type tickMsg struct{}
 
 func main() {
