@@ -18,6 +18,13 @@ func main() {
 	}
 }
 
+const SCREEN_MENU = 0
+const SCREEN_GENERATOR = 0
+const SCREEN_PLAY = 0
+
+// sprite for each direction: n, e, s, w
+const PLAYER_SPRITES = string[]{"⯊", "◗", "⯋", "◖"}
+
 type model struct {
 	didSetInitalSize   bool
 	width              int
@@ -41,7 +48,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
 		case "enter":
-			m.gmodel = initializeMaze(m.getMazeSizeInCells())
+			m.gmodel = initializeMazeGen(m.getMazePixelSize())
 			m.grid = m.gmodel.generateMaze(m.iterationsPerFrame)
 			cmd = tea.Batch(
 				cmd,
@@ -97,11 +104,6 @@ func (m *model) setWindowSize(w int, h int) {
 	}
 	m.height = h
 	m.width = w
-}
-
-func (m *model) getMazeSizeInCells() (int, int) {
-	w, h := m.getMazePixelSize()
-	return ((w) / 4) - 1, ((ensuringOdd(h)) / 2) - 1
 }
 
 func (m *model) getMazePixelSize() (int, int) {

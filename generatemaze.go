@@ -51,7 +51,10 @@ func createCellGrid(width int, height int) [][]cell {
 	return grid
 }
 
-func initializeMaze(gridWidth int, gridHeight int) *genmodel {
+func initializeMazeGen(width int, height int) *genmodel {
+	gridHeight := ((ensuringOdd(height)) / 2) - 1
+	gridWidth := ((width) / 4) - 1
+
 	if gridHeight < 1 || gridWidth < 1 {
 		panic("invalid maze dimensions")
 	}
