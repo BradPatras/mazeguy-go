@@ -41,7 +41,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q", "esc":
 			return m, tea.Quit
 		case "enter":
-			m.gmodel = initializeMaze(((m.width)/4)-1, ((ensuringOdd(m.height-1))/2)-1)
+			m.gmodel = initializeMaze(m.getMazeSizeInCells())
 			m.grid = m.gmodel.generateMaze(m.iterationsPerFrame)
 			cmd = tea.Batch(
 				cmd,
@@ -93,11 +93,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) setWindowSize(w int, h int) {
 	if !m.didSetInitalSize {
-		m.height = h
-		m.width = ensuringOdd(w)
-
 		m.didSetInitalSize = true
 	}
+	m.height = h
+	m.width = w
+}
+
+func (m *model) getMazeSizeInCells() (int, int) {
+	w, h := m.getMazePixelSize()
+	return ((w) / 4) - 1, ((ensuringOdd(h)) / 2) - 1
+}
+
+func (m *model) getMazePixelSize() (int, int) {
+	_, controlBarHeight := lipgloss.Size(m.controlView())
+	hPadding := 4
+	vPadding := 1
+	return (m.width - hPadding), (ensuringOdd(m.height - controlBarHeight - vPadding))
 }
 
 func ensuringOdd(v int) int {
@@ -121,7 +132,7 @@ func (m *model) View() tea.View {
 	if len(m.grid) == 0 {
 		content = lipgloss.NewStyle().Height(m.height - cvHeight).AlignVertical(lipgloss.Center).Render("Press enter to begin")
 	} else {
-		content = m.mazeView(m.height - cvHeight)
+		content = m.mazeView()
 	}
 
 	viewString := lipgloss.JoinVertical(
@@ -141,9 +152,10 @@ func tickCmd() tea.Cmd {
 	})
 }
 
-func (m model) mazeView(height int) string {
+func (m model) mazeView() string {
+	width, height := m.getMazePixelSize()
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
-	return style.Width(m.width).Height(height).MaxHeight(height).Render(render(m.grid))
+	return style.Width(width).MaxWidth(width).Height(height).MaxHeight(height).AlignVertical(lipgloss.Center).AlignHorizontal(lipgloss.Center).Render(render(m.grid))
 }
 
 func (m model) controlView() string {
