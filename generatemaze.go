@@ -61,8 +61,8 @@ func initializeMazeGen(width int, height int) *genmodel {
 
 	grid := createCellGrid(gridWidth, gridHeight)
 
-	// start point is near the middle
-	current := &grid[gridWidth/2][gridHeight/2]
+	// start point is randomly chosen
+	current := &grid[rand.IntN(gridWidth)][rand.IntN(gridHeight)]
 	current.visited = true
 	var backstack []vec2
 	backstack = append(backstack, current.pos)
