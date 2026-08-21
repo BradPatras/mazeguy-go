@@ -61,9 +61,8 @@ func initializeMazeGen(width int, height int) *genmodel {
 
 	grid := createCellGrid(gridWidth, gridHeight)
 
-	// entry point is top left
-	current := &grid[0][0]
-	current.walls = bitflags.Del(current.walls, left)
+	// start point is near the middle
+	current := &grid[gridWidth/2][gridHeight/2]
 	current.visited = true
 	var backstack []vec2
 	backstack = append(backstack, current.pos)
@@ -146,8 +145,9 @@ func (m *genmodel) generateMaze(iterations int) [][]cell {
 		// check if finished
 		if len(m.backstack) <= 1 {
 			m.isFinished = true
-			// create exit point in bottom right
-			m.grid[m.gridWidth-1][m.gridHeight-1].walls = bitflags.Del(m.grid[m.gridWidth-1][m.gridHeight-1].walls, right)
+			// create entry and exit points on left/right side
+			m.grid[0][m.gridHeight/2].walls = bitflags.Del(m.grid[0][m.gridHeight/2].walls, left)
+			m.grid[m.gridWidth-1][m.gridHeight/2].walls = bitflags.Del(m.grid[m.gridWidth-1][m.gridHeight/2].walls, right)
 			break
 		}
 	}
