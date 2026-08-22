@@ -53,6 +53,7 @@ type model struct {
 	grid               [][]cell
 	isPaused           bool
 	iterationsPerFrame int
+	generatorTickDelay int
 
 	// menu screen properties
 	menuSpriteIndex int
@@ -85,7 +86,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case generatorTickMsg:
 		if m.selectedScreen == SCREEN_GENERATOR && !m.isPaused && !m.gmodel.isFinished {
 			m.grid = m.gmodel.generateMaze(m.iterationsPerFrame)
-			cmd = tea.Batch(cmd, generatorTickCmd())
+			cmd = tea.Batch(cmd, m.generatorTickCmd())
 		}
 	case menuTickMsg:
 		if m.selectedScreen == SCREEN_MENU {
@@ -125,7 +126,7 @@ func (m *model) handleGeneratorKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 		m.grid = m.gmodel.generateMaze(m.iterationsPerFrame)
 		cmd = tea.Batch(
 			cmd,
-			generatorTickCmd(),
+			m.generatorTickCmd(),
 		)
 	case "space":
 		if len(m.grid) > 0 {
@@ -133,7 +134,7 @@ func (m *model) handleGeneratorKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 			if !m.isPaused {
 				cmd = tea.Batch(
 					cmd,
-					generatorTickCmd(),
+					m.generatorTickCmd(),
 				)
 			}
 		}
@@ -154,6 +155,32 @@ func (m *model) handleGeneratorKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 			m.iterationsPerFrame = 5
 		default:
 			m.iterationsPerFrame += 5
+		}
+	case "down":
+		switch m.generatorTickDelay {
+		case 0, 1:
+			m.generatorTickDelay = 0
+		case 10:
+			m.generatorTickDelay = 1
+		default:
+			if m.generatorTickDelay > 50 {
+				m.generatorTickDelay -= 50
+			} else {
+				m.generatorTickDelay -= 10
+			}
+		}
+	case "up":
+		switch m.generatorTickDelay {
+		case 0:
+			m.generatorTickDelay = 1
+		case 1:
+			m.generatorTickDelay = 10
+		default:
+			if m.generatorTickDelay >= 50 {
+				m.generatorTickDelay += 50
+			} else {
+				m.generatorTickDelay += 10
+			}
 		}
 	}
 
@@ -211,8 +238,8 @@ func (m *model) View() tea.View {
 	return v
 }
 
-func generatorTickCmd() tea.Cmd {
-	return tea.Tick(time.Nanosecond*1, func(t time.Time) tea.Msg {
+func (m *model) generatorTickCmd() tea.Cmd {
+	return tea.Tick(time.Millisecond*time.Duration(m.generatorTickDelay), func(t time.Time) tea.Msg {
 		return generatorTickMsg(t)
 	})
 }
@@ -289,14 +316,22 @@ func (m *model) generatorControlView() string {
 	cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
 	typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#1ab753"))
 	style := lipgloss.NewStyle().Faint(true)
-	str := style.Render("Iterations per frame: ") +
+	str := "iterations per tick: " +
 		typeStyle.Render(strconv.Itoa(m.iterationsPerFrame)) +
 		style.Render(" | ") +
-		cmdStyle.Render("[left/right] arrow") +
-		style.Render(" adjusts iterations per frame | ") +
-		cmdStyle.Render("[enter]") +
-		style.Render(" regenerates | ") +
-		cmdStyle.Render("[space]") +
+		"tick delay (ms): " +
+		typeStyle.Render(strconv.Itoa(m.generatorTickDelay)) +
+		"\n" +
+		cmdStyle.Render("<left/right>") +
+		style.Render(" adjusts iterations per tick") +
+		"\n" +
+		cmdStyle.Render("<up/down>") +
+		style.Render(" adjusts tick delay") +
+		"\n" +
+		cmdStyle.Render("<enter>") +
+		style.Render(" regenerates") +
+		"\n" +
+		cmdStyle.Render("<space>") +
 		style.Render(" play/pause")
 	v := lipgloss.NewStyle().
 		PaddingLeft(1).
