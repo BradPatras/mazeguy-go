@@ -19,11 +19,10 @@ func main() {
 	}
 }
 
-const TITLE_STRING_A = "   ════════╦═══════════╦═══════════╦═══════════════╗\n           ║           ║           ║               ║\n   ╔════   ║   ║   ════╣   ╔═══╗   ║   ║   ╔═══╗   ║\n   ║       ║   ║       ║   ║   ║       ║   ║   ║   ║\n   ║   ╔═══╣   ╚═══╗   ║   ║   ╚═══╦═══╝   ║   ║   ║\n   ║   ║   ║       ║               ║       ║   ║   ║\n   ║   ║   ╚════   ╠═══════════════╣   ════╣   ║   ║\n   ║   ║           ║   "
+const TITLE_STRING_A = "╔═══════╦═══════════╦═══════════╦═══════════════╗\n║       ║           ║           ║               ║\n╠════   ║   ║   ════╣   ╔═══╗   ║   ║   ╔═══╗   ║\n║       ║   ║       ║   ║   ║       ║   ║   ║   ║\n║   ╔═══╣   ╚═══╗   ║   ║   ╚═══╦═══╝   ║   ║   ║\n║   ║   ║       ║               ║       ║   ║   ║\n║   ║   ╚════   ╠═══════════════╣   ════╣   ║   ║\n║   ║           ║   "
 const TITLE_STRING_B = "maze  guy"
-const TITLE_STRING_C = "   ║       ║   ║   ║\n   ║   ║   ════════╣   ╔═══════╗   ║   ║   ║   ║   ║\n   ║   ║           ║   ║"
-const TITLE_STRING_D = "║   ║   ║   ║       ║\n   ║   ╚═══╗   ╔═══╝   ║   ════╣   ╠═══╝   ║   ════╣\n   ║       ║   ║       ║       ║   ║       ║       ║\n   ╠═══╗   ╚═══╣   ╔═══╩════   ║   ║   ════╩═══╗   ║\n   ║   ║       ║   ║           ║   ║           ║   ║\n   ║   ╚════   ║   ║   ║   ════╝   ╚════════   ║   ║\n   ║               ║   ║                       ║    \n   ╚═══════════════╩═══╩═══════════════════════╩════\n "
-
+const TITLE_STRING_C = "   ║       ║   ║   ║\n║   ║   ════════╣   ╔═══════╗   ║   ║   ║   ║   ║\n║   ║           ║   ║"
+const TITLE_STRING_D = "║   ║   ║   ║       ║\n║   ╚═══╗   ╔═══╝   ║   ════╣   ╠═══╝   ║   ════╣\n║       ║   ║       ║       ║   ║       ║       ║\n╠═══╗   ╚═══╣   ╔═══╩════   ║   ║   ════╩═══╗   ║\n║   ║       ║   ║           ║   ║           ║   ║\n║   ╚════   ║   ║   ║   ════╝   ╚════════   ║   ║\n║               ║   ║                       ║   ║\n╚═══════════════╩═══╩═══════════════════════╩═══╝\n"
 const SCREEN_MENU = 0
 const SCREEN_GENERATOR = 1
 const SCREEN_PLAY = 2
@@ -105,6 +104,8 @@ func (m *model) handleMenuKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	case "esc":
 		cmd = tea.Quit
 	case "enter":
+		m.selectedScreen = SCREEN_PLAY
+	case "g":
 		m.selectedScreen = SCREEN_GENERATOR
 	}
 
@@ -248,17 +249,33 @@ func (m *model) playView() tea.View {
 
 func (m *model) menuView() tea.View {
 	greenText := lipgloss.NewStyle().Foreground(lipgloss.Color("#1ab753"))
+	blueText := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
 	sprite := MENU_SPRITES[m.menuSpriteIndex%len(MENU_SPRITES)]
+	faintStyle := lipgloss.NewStyle().Faint(true)
+	titleString := TITLE_STRING_A +
+		greenText.Render(TITLE_STRING_B) +
+		TITLE_STRING_C +
+		greenText.Render(sprite) +
+		TITLE_STRING_D
+
+	buttons := blueText.Render("<enter>") +
+		faintStyle.Render(" to play") +
+		" / " +
+		blueText.Render("<g>") +
+		faintStyle.Render(" for maze generator")
+
+	vert := lipgloss.JoinVertical(
+		lipgloss.Center,
+		titleString,
+		buttons,
+	)
+
 	return tea.NewView(lipgloss.Place(
 		m.width,
 		m.height,
 		lipgloss.Center,
 		lipgloss.Center,
-		TITLE_STRING_A+
-			greenText.Render(TITLE_STRING_B)+
-			TITLE_STRING_C+
-			greenText.Render(sprite)+
-			TITLE_STRING_D,
+		vert,
 	))
 }
 
