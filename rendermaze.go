@@ -6,6 +6,9 @@ import (
 	"github.com/imacks/bitflags-go"
 )
 
+const START_RUNE = rune('➬')
+const END_RUNE = rune('➫')
+
 // per-cell render
 func render(grid [][]cell) string {
 	var result strings.Builder
@@ -39,14 +42,18 @@ func render(grid [][]cell) string {
 				if bitflags.Has(c, left) {
 					sb2.WriteRune(rune('║'))
 				} else {
-					sb2.WriteRune(rune(' '))
+					sb2.WriteRune(rune(START_RUNE))
 				}
 			}
 			sb2.WriteString("   ")
 			if bitflags.Has(c, right) {
 				sb2.WriteRune(rune('║'))
 			} else {
-				sb2.WriteRune(rune(' '))
+				if x == gridWidth-1 {
+					sb2.WriteRune(rune(END_RUNE))
+				} else {
+					sb2.WriteRune(rune(' '))
+				}
 			}
 
 			// bottom row

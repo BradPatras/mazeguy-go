@@ -11,6 +11,7 @@ import (
 
 type generatorTickMsg time.Time
 type menuTickMsg time.Time
+type playTickMsg time.Time
 
 func main() {
 	p := tea.NewProgram(&model{iterationsPerFrame: 1})
@@ -28,18 +29,31 @@ const SCREEN_GENERATOR = 1
 const SCREEN_PLAY = 2
 
 // sprite for each direction: n, e, s, w
-var PLAYER_SPRITES = []string{"⯊", "◗", "⯋", "◖"}
+// var PLAYER_SPRITES = []rune{'⯊', '◗', '⯋', '◖'}
+var PLAYER_SPRITES = []rune{'🠵', '🠶', '🠷', '🠴'}
+var KEY_DIRECTION_MAP = map[string]int{
+	"up":    0,
+	"right": 1,
+	"down":  2,
+	"left":  3,
+}
+var SPRITE_DIRECTION_MAP = map[int]rune{
+	0: PLAYER_SPRITES[0],
+	1: PLAYER_SPRITES[1],
+	2: PLAYER_SPRITES[2],
+	3: PLAYER_SPRITES[3],
+}
 var MENU_SPRITES = []string{
-	" ◗     ",
-	"  ◗    ",
-	"   ◗   ",
-	"    ◗  ",
-	"     ◗ ",
-	"     ◖ ",
-	"    ◖  ",
-	"   ◖   ",
-	"  ◖    ",
-	" ◖     ",
+	" 🠶     ",
+	"  🠶    ",
+	"   🠶   ",
+	"    🠶  ",
+	"     🠶 ",
+	"     🠴 ",
+	"    🠴  ",
+	"   🠴   ",
+	"  🠴    ",
+	" 🠴     ",
 }
 
 type model struct {
@@ -57,6 +71,9 @@ type model struct {
 
 	// menu screen properties
 	menuSpriteIndex int
+
+	// play screen
+	pmodel playmodel
 }
 
 func (m *model) Init() tea.Cmd {
@@ -93,6 +110,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.menuSpriteIndex++
 			cmd = tea.Batch(cmd, menuTickCmd())
 		}
+	case playTickMsg:
+		if m.selectedScreen == SCREEN_PLAY {
+			m.pmodel.tickPlay()
+			cmd = tea.Batch(cmd, playTickCmd())
+		}
 	}
 
 	return m, cmd
@@ -106,6 +128,7 @@ func (m *model) handleMenuKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 		cmd = tea.Quit
 	case "enter":
 		m.selectedScreen = SCREEN_PLAY
+		m.pmodel = initializePlay(m.getMazePixelSize())
 	case "g":
 		m.selectedScreen = SCREEN_GENERATOR
 	}
@@ -192,6 +215,13 @@ func (m *model) handlePlayKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	switch msg.String() {
 	case "esc":
 		m.selectedScreen = SCREEN_MENU
+	case "up", "down", "left", "right":
+		m.pmodel.direction = KEY_DIRECTION_MAP[msg.String()]
+	case "enter":
+		cmd = tea.Batch(
+			cmd,
+			playTickCmd(),
+		)
 	}
 	return cmd
 }
@@ -250,6 +280,12 @@ func menuTickCmd() tea.Cmd {
 	})
 }
 
+func playTickCmd() tea.Cmd {
+	return tea.Tick(time.Millisecond*100, func(t time.Time) tea.Msg {
+		return playTickMsg(t)
+	})
+}
+
 func (m *model) generatorView() tea.View {
 	cv := m.generatorControlView()
 
@@ -271,7 +307,7 @@ func (m *model) generatorView() tea.View {
 }
 
 func (m *model) playView() tea.View {
-	return tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, "Play Screen"))
+	return tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, string(m.pmodel.mazeRunes)))
 }
 
 func (m *model) menuView() tea.View {
