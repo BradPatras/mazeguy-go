@@ -34,7 +34,16 @@ func initializePlay(mazeWidth int, mazeHeight int) playmodel {
 }
 
 func (m *playmodel) tickPlay() {
-	// find and replace player rune
+	// find the player rune
+
+	// update the direction with s
+	
+	// check if there's an empty space in that direction
+
+	// if yes, replace the current player rune with space and
+	// replace the empty space with the player rune
+
+	// if no, do nothing
 	for i := range len(m.mazeRunes) {
 		if runesContainRune(PLAYER_SPRITES, m.mazeRunes[i]) {
 			m.mazeRunes[i] = SPRITE_DIRECTION_MAP[m.direction]

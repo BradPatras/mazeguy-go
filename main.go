@@ -37,6 +37,12 @@ var KEY_DIRECTION_MAP = map[string]int{
 	"down":  2,
 	"left":  3,
 }
+var KEY_WASD_MAP = map[string]int{
+	"w":    0,
+	"d": 1,
+	"s":  2,
+	"a":  3,
+}
 var SPRITE_DIRECTION_MAP = map[int]rune{
 	0: PLAYER_SPRITES[0],
 	1: PLAYER_SPRITES[1],
@@ -215,6 +221,8 @@ func (m *model) handlePlayKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	switch msg.String() {
 	case "esc":
 		m.selectedScreen = SCREEN_MENU
+	case "w", "a", "s", "d":
+		m.pmodel.direction = KEY_WASD_MAP[msg.String()]
 	case "up", "down", "left", "right":
 		m.pmodel.direction = KEY_DIRECTION_MAP[msg.String()]
 	case "enter":
