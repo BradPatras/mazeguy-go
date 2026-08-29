@@ -4,20 +4,22 @@ const SPACE uint8 = 0
 const WALL uint8 = 1
 const START uint8 = 2
 const END uint8 = 3
+const SPACE_RUNE = rune(' ')
 
 type playmodel struct {
 	// 0:n, 1:e, 2:s, 3:w
-	direction int
-	playerLoc vec2
-	mazeRunes []rune
-	width     int
-	height    int
+	direction  int
+	mazeRunes  []rune
+	isFinished bool
+	isStarted  bool
+	pixelWidth int
 }
 
 func initializePlay(mazeWidth int, mazeHeight int) playmodel {
 	mazeGen := initializeMazeGen(mazeWidth, mazeHeight)
 	mazeCells := mazeGen.generateMaze(0)
-	mazeRunes := []rune(render(mazeCells))
+	mazeString, pixelWidth := render(mazeCells)
+	mazeRunes := []rune(mazeString)
 
 	// place player sprite at entrance
 	for i := range len(mazeRunes) {
@@ -28,28 +30,64 @@ func initializePlay(mazeWidth int, mazeHeight int) playmodel {
 	}
 
 	return playmodel{
-		direction: 1,
-		mazeRunes: mazeRunes,
+		direction:  1,
+		mazeRunes:  mazeRunes,
+		pixelWidth: pixelWidth,
 	}
 }
 
 func (m *playmodel) tickPlay() {
-	// find the player rune
-
-	// update the direction with s
-	
-	// check if there's an empty space in that direction
-
-	// if yes, replace the current player rune with space and
-	// replace the empty space with the player rune
-
-	// if no, do nothing
+	// find the player rune current location
+	var playerRuneIndex int
 	for i := range len(m.mazeRunes) {
 		if runesContainRune(PLAYER_SPRITES, m.mazeRunes[i]) {
-			m.mazeRunes[i] = SPRITE_DIRECTION_MAP[m.direction]
+			playerRuneIndex = i
 			break
 		}
 	}
+
+	// try to move in the requested direction
+	// if it's not possible, try moving in the
+	// player's current sprite direction
+	if !m.tryMove(playerRuneIndex, m.direction) {
+		m.tryMove(playerRuneIndex, SPRITE_TO_DIRECTION_MAP[m.mazeRunes[playerRuneIndex]])
+	}
+}
+
+func (m *playmodel) tryMove(playerRuneIndex int, direction int) bool {
+	playerRune := DIRECTION_TO_SPRITE_MAP[direction]
+	switch direction {
+	case 0: // up
+		if m.mazeRunes[playerRuneIndex-(m.pixelWidth)] == SPACE_RUNE {
+			m.mazeRunes[playerRuneIndex-(m.pixelWidth)] = playerRune
+			m.mazeRunes[playerRuneIndex] = SPACE_RUNE
+			return true
+		}
+	case 1: // right
+		if m.mazeRunes[playerRuneIndex+1] == SPACE_RUNE && m.mazeRunes[playerRuneIndex+2] == SPACE_RUNE && m.mazeRunes[playerRuneIndex+3] == SPACE_RUNE {
+			m.mazeRunes[playerRuneIndex+2] = playerRune
+			m.mazeRunes[playerRuneIndex] = SPACE_RUNE
+			return true
+		} else if m.mazeRunes[playerRuneIndex+2] == END_RUNE {
+			m.isFinished = true
+			m.mazeRunes[playerRuneIndex+2] = playerRune
+			m.mazeRunes[playerRuneIndex] = SPACE_RUNE
+		}
+	case 2: // down
+		if m.mazeRunes[playerRuneIndex+(m.pixelWidth)] == SPACE_RUNE {
+			m.mazeRunes[playerRuneIndex+(m.pixelWidth)] = playerRune
+			m.mazeRunes[playerRuneIndex] = SPACE_RUNE
+			return true
+		}
+	case 3: // left
+		if m.mazeRunes[playerRuneIndex-1] == SPACE_RUNE && m.mazeRunes[playerRuneIndex-2] == SPACE_RUNE && m.mazeRunes[playerRuneIndex-3] == SPACE_RUNE {
+			m.mazeRunes[playerRuneIndex-2] = playerRune
+			m.mazeRunes[playerRuneIndex] = SPACE_RUNE
+			return true
+		}
+	}
+
+	return false
 }
 
 func replaceAtIndex(str string, replacement rune, index int) string {

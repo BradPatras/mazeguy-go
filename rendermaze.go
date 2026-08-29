@@ -9,8 +9,8 @@ import (
 const START_RUNE = rune('➬')
 const END_RUNE = rune('➫')
 
-// per-cell render
-func render(grid [][]cell) string {
+// returns the maze rendered as a string and the width in pixels
+func render(grid [][]cell) (string, int) {
 	var result strings.Builder
 
 	// cell height is 3 so we will build 3 lines of text at a time
@@ -83,7 +83,8 @@ func render(grid [][]cell) string {
 		sb3.Reset()
 	}
 
-	return result.String()
+	pixelWidth := (gridWidth * 4) + 2
+	return result.String(), pixelWidth
 }
 
 // get the wall intersection rune based on the presence of neighboring walls

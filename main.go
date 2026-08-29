@@ -38,17 +38,24 @@ var KEY_DIRECTION_MAP = map[string]int{
 	"left":  3,
 }
 var KEY_WASD_MAP = map[string]int{
-	"w":    0,
+	"w": 0,
 	"d": 1,
-	"s":  2,
-	"a":  3,
+	"s": 2,
+	"a": 3,
 }
-var SPRITE_DIRECTION_MAP = map[int]rune{
+var DIRECTION_TO_SPRITE_MAP = map[int]rune{
 	0: PLAYER_SPRITES[0],
 	1: PLAYER_SPRITES[1],
 	2: PLAYER_SPRITES[2],
 	3: PLAYER_SPRITES[3],
 }
+var SPRITE_TO_DIRECTION_MAP = map[rune]int{
+	'🠵': 0,
+	'🠶': 1,
+	'🠷': 2,
+	'🠴': 3,
+}
+
 var MENU_SPRITES = []string{
 	" 🠶     ",
 	"  🠶    ",
@@ -118,8 +125,12 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case playTickMsg:
 		if m.selectedScreen == SCREEN_PLAY {
-			m.pmodel.tickPlay()
-			cmd = tea.Batch(cmd, playTickCmd())
+			if m.pmodel.isFinished {
+				m.pmodel = initializePlay(m.getMazePixelSize())
+			} else {
+				m.pmodel.tickPlay()
+				cmd = tea.Batch(cmd, playTickCmd())
+			}
 		}
 	}
 
@@ -218,19 +229,26 @@ func (m *model) handleGeneratorKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 
 func (m *model) handlePlayKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	var cmd tea.Cmd
+	var didManeuver bool
 	switch msg.String() {
 	case "esc":
 		m.selectedScreen = SCREEN_MENU
 	case "w", "a", "s", "d":
 		m.pmodel.direction = KEY_WASD_MAP[msg.String()]
+		didManeuver = true
 	case "up", "down", "left", "right":
 		m.pmodel.direction = KEY_DIRECTION_MAP[msg.String()]
-	case "enter":
+		didManeuver = true
+	}
+
+	if !m.pmodel.isStarted && didManeuver {
+		m.pmodel.isStarted = true
 		cmd = tea.Batch(
 			cmd,
 			playTickCmd(),
 		)
 	}
+
 	return cmd
 }
 
@@ -315,7 +333,17 @@ func (m *model) generatorView() tea.View {
 }
 
 func (m *model) playView() tea.View {
-	return tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, string(m.pmodel.mazeRunes)))
+	blueText := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
+	faintStyle := lipgloss.NewStyle().Faint(true)
+	buttons := blueText.Render("<arrow keys or wasd>") +
+		faintStyle.Render(" to manuever")
+	vert := lipgloss.JoinVertical(
+		lipgloss.Center,
+		string(m.pmodel.mazeRunes),
+		buttons,
+	)
+
+	return tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, vert))
 }
 
 func (m *model) menuView() tea.View {
@@ -353,7 +381,8 @@ func (m *model) menuView() tea.View {
 func (m *model) generatorMazeView() string {
 	width, height := m.getMazePixelSize()
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
-	return style.Width(width).MaxWidth(width).Height(height).MaxHeight(height).AlignVertical(lipgloss.Center).AlignHorizontal(lipgloss.Center).Render(render(m.grid))
+	maze, _ := render(m.grid)
+	return style.Width(width).MaxWidth(width).Height(height).MaxHeight(height).AlignVertical(lipgloss.Center).AlignHorizontal(lipgloss.Center).Render(maze)
 }
 
 func (m *model) generatorControlView() string {
