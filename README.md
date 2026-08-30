@@ -2,12 +2,8 @@
 
 it's a maze, guy
 
-#### Generate mazes
+#### Solve mazes or just watch them generate
 
-![demo](media/gen-demo.gif)
-
-#### Solve mazes
-
-![demo](media/maze-play.gif)
+![demo](media/maze-cap.gif)
 
 ---

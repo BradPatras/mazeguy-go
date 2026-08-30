@@ -56,6 +56,9 @@ var SPRITE_TO_DIRECTION_MAP = map[rune]int{
 	'🠴': 3,
 }
 
+var styleGreen = lipgloss.NewStyle().Foreground(lipgloss.Color("#1ab753"))
+var styleBlue = lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
+
 var MENU_SPRITES = []string{
 	" 🠶     ",
 	"  🠶    ",
@@ -86,7 +89,7 @@ type model struct {
 	menuSpriteIndex int
 
 	// play screen
-	pmodel playmodel
+	pmodel *playmodel
 }
 
 func (m *model) Init() tea.Cmd {
@@ -157,10 +160,7 @@ func (m *model) handleGeneratorKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	var cmd tea.Cmd
 	switch msg.String() {
 	case "esc":
-		m.gmodel = &genmodel{}
-		m.grid = [][]cell{}
-		m.isPaused = false
-		m.selectedScreen = SCREEN_MENU
+		return m.returnToMenu()
 	case "enter":
 		m.gmodel = initializeMazeGen(m.getMazePixelSize())
 		m.grid = m.gmodel.generateMaze(m.iterationsPerFrame)
@@ -227,12 +227,21 @@ func (m *model) handleGeneratorKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	return cmd
 }
 
+func (m *model) returnToMenu() tea.Cmd {
+	m.gmodel = &genmodel{}
+	m.pmodel = &playmodel{}
+	m.grid = [][]cell{}
+	m.isPaused = false
+	m.selectedScreen = SCREEN_MENU
+	return menuTickCmd()
+}
+
 func (m *model) handlePlayKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	var cmd tea.Cmd
 	var didManeuver bool
 	switch msg.String() {
 	case "esc":
-		m.selectedScreen = SCREEN_MENU
+		return m.returnToMenu()
 	case "w", "a", "s", "d":
 		m.pmodel.direction = KEY_WASD_MAP[msg.String()]
 		didManeuver = true
@@ -307,7 +316,7 @@ func menuTickCmd() tea.Cmd {
 }
 
 func playTickCmd() tea.Cmd {
-	return tea.Tick(time.Millisecond*100, func(t time.Time) tea.Msg {
+	return tea.Tick(time.Millisecond*75, func(t time.Time) tea.Msg {
 		return playTickMsg(t)
 	})
 }
@@ -333,20 +342,18 @@ func (m *model) generatorView() tea.View {
 }
 
 func (m *model) menuView() tea.View {
-	greenText := lipgloss.NewStyle().Foreground(lipgloss.Color("#1ab753"))
-	blueText := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
 	sprite := MENU_SPRITES[m.menuSpriteIndex%len(MENU_SPRITES)]
 	faintStyle := lipgloss.NewStyle().Faint(true)
 	titleString := TITLE_STRING_A +
-		greenText.Render(TITLE_STRING_B) +
+		styleGreen.Render(TITLE_STRING_B) +
 		TITLE_STRING_C +
-		greenText.Render(sprite) +
+		styleGreen.Render(sprite) +
 		TITLE_STRING_D
 
-	buttons := blueText.Render("<enter>") +
+	buttons := styleBlue.Render("<enter>") +
 		faintStyle.Render(" to play") +
 		" / " +
-		blueText.Render("<g>") +
+		styleBlue.Render("<g>") +
 		faintStyle.Render(" for maze generator")
 
 	vert := lipgloss.JoinVertical(
@@ -366,31 +373,28 @@ func (m *model) menuView() tea.View {
 
 func (m *model) generatorMazeView() string {
 	width, height := m.getMazePixelSize()
-	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
 	maze, _ := render(m.grid)
-	return style.Width(width).MaxWidth(width).Height(height).MaxHeight(height).AlignVertical(lipgloss.Center).AlignHorizontal(lipgloss.Center).Render(maze)
+	return styleBlue.Width(width).MaxWidth(width).Height(height).MaxHeight(height).AlignVertical(lipgloss.Center).AlignHorizontal(lipgloss.Center).Render(maze)
 }
 
 func (m *model) generatorControlView() string {
-	cmdStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
-	typeStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#1ab753"))
 	style := lipgloss.NewStyle().Faint(true)
 	str := "iterations per tick: " +
-		typeStyle.Render(strconv.Itoa(m.iterationsPerFrame)) +
+		styleGreen.Render(strconv.Itoa(m.iterationsPerFrame)) +
 		style.Render(" | ") +
 		"tick delay (ms): " +
-		typeStyle.Render(strconv.Itoa(m.generatorTickDelay)) +
+		styleGreen.Render(strconv.Itoa(m.generatorTickDelay)) +
 		"\n" +
-		cmdStyle.Render("<left/right>") +
+		styleBlue.Render("<left/right>") +
 		style.Render(" adjusts iterations per tick") +
 		"\n" +
-		cmdStyle.Render("<up/down>") +
+		styleBlue.Render("<up/down>") +
 		style.Render(" adjusts tick delay") +
 		"\n" +
-		cmdStyle.Render("<enter>") +
+		styleBlue.Render("<enter>") +
 		style.Render(" regenerates") +
 		"\n" +
-		cmdStyle.Render("<space>") +
+		styleBlue.Render("<space>") +
 		style.Render(" play/pause")
 	v := lipgloss.NewStyle().
 		PaddingLeft(1).

@@ -22,7 +22,7 @@ type playmodel struct {
 	pixelWidth int
 }
 
-func initializePlay(mazeWidth int, mazeHeight int) playmodel {
+func initializePlay(mazeWidth int, mazeHeight int) *playmodel {
 	mazeGen := initializeMazeGen(mazeWidth, mazeHeight)
 	mazeCells := mazeGen.generateMaze(0)
 	mazeString, pixelWidth := render(mazeCells)
@@ -36,7 +36,7 @@ func initializePlay(mazeWidth int, mazeHeight int) playmodel {
 		}
 	}
 
-	return playmodel{
+	return &playmodel{
 		direction:  1,
 		mazeRunes:  mazeRunes,
 		pixelWidth: pixelWidth,
@@ -113,11 +113,10 @@ func (m *playmodel) playView(width int, height int) tea.View {
 
 func (m *playmodel) styledMazeString() string {
 	var sb strings.Builder
-	playerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#1ab753"))
 	endStyle := lipgloss.NewStyle().Foreground(lipgloss.BrightRed)
 	for i := range len(m.mazeRunes) {
 		if runesContainRune(PLAYER_SPRITES, m.mazeRunes[i]) {
-			sb.WriteString(playerStyle.Render(string(m.mazeRunes[i])))
+			sb.WriteString(styleGreen.Render(string(m.mazeRunes[i])))
 		} else if m.mazeRunes[i] == END_RUNE {
 			sb.WriteString(endStyle.Render(string(m.mazeRunes[i])))
 		} else {
