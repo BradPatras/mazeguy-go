@@ -11,5 +11,3 @@ it's a maze, guy
 ![demo](media/maze-play.gif)
 
 ---
-
-written using bubbletea and lipgloss

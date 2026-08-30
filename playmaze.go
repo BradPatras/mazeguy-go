@@ -1,5 +1,12 @@
 package main
 
+import (
+	"strings"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+)
+
 const SPACE uint8 = 0
 const WALL uint8 = 1
 const START uint8 = 2
@@ -88,6 +95,37 @@ func (m *playmodel) tryMove(playerRuneIndex int, direction int) bool {
 	}
 
 	return false
+}
+
+func (m *playmodel) playView(width int, height int) tea.View {
+	blueText := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
+	faintStyle := lipgloss.NewStyle().Faint(true)
+	buttons := blueText.Render("<arrow keys or wasd>") +
+		faintStyle.Render(" to manuever")
+	vert := lipgloss.JoinVertical(
+		lipgloss.Center,
+		m.styledMazeString(),
+		buttons,
+	)
+
+	return tea.NewView(lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, vert))
+}
+
+func (m *playmodel) styledMazeString() string {
+	var sb strings.Builder
+	playerStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#1ab753"))
+	endStyle := lipgloss.NewStyle().Foreground(lipgloss.BrightRed)
+	for i := range len(m.mazeRunes) {
+		if runesContainRune(PLAYER_SPRITES, m.mazeRunes[i]) {
+			sb.WriteString(playerStyle.Render(string(m.mazeRunes[i])))
+		} else if m.mazeRunes[i] == END_RUNE {
+			sb.WriteString(endStyle.Render(string(m.mazeRunes[i])))
+		} else {
+			sb.WriteRune(m.mazeRunes[i])
+		}
+	}
+
+	return sb.String()
 }
 
 func replaceAtIndex(str string, replacement rune, index int) string {

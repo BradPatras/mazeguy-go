@@ -287,7 +287,7 @@ func (m *model) View() tea.View {
 	case SCREEN_GENERATOR:
 		v = m.generatorView()
 	case SCREEN_PLAY:
-		v = m.playView()
+		v = m.pmodel.playView(m.width, m.height)
 	}
 
 	v.AltScreen = true
@@ -330,20 +330,6 @@ func (m *model) generatorView() tea.View {
 	)
 
 	return tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, viewString))
-}
-
-func (m *model) playView() tea.View {
-	blueText := lipgloss.NewStyle().Foreground(lipgloss.Color("#6cacd4"))
-	faintStyle := lipgloss.NewStyle().Faint(true)
-	buttons := blueText.Render("<arrow keys or wasd>") +
-		faintStyle.Render(" to manuever")
-	vert := lipgloss.JoinVertical(
-		lipgloss.Center,
-		string(m.pmodel.mazeRunes),
-		buttons,
-	)
-
-	return tea.NewView(lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, vert))
 }
 
 func (m *model) menuView() tea.View {

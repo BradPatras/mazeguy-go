@@ -7,7 +7,7 @@ import (
 )
 
 const START_RUNE = rune('➬')
-const END_RUNE = rune('➫')
+const END_RUNE = rune('🡆')
 
 // returns the maze rendered as a string and the width in pixels
 func render(grid [][]cell) (string, int) {
